@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useDashboardStore } from '../../store/dashboard.store'
 import { useLLM, SUGERENCIAS } from '../../hooks/useLLM'
-import { GlossaryText } from '../glossary/GlossaryText'
+import { TooltipGlosario } from '../glossary/GlossaryText'
 
 // ─── BURBUJA DE MENSAJE ───────────────────────────────────────────────────────
 function Burbuja({ mensaje }) {
@@ -26,20 +26,20 @@ function Burbuja({ mensaje }) {
         ) : (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            urlTransform={(value) => value}
             components={{
-              p:      ({ children }) => (
-                <p className="leading-relaxed mb-1.5 last:mb-0">
-                  <GlossaryText text={String(children)} />
-                </p>
-              ),
+              p:      ({ children }) => <p className="leading-relaxed mb-1.5 last:mb-0">{children}</p>,
               ul:     ({ children }) => <ul className="list-disc ml-4 space-y-0.5">{children}</ul>,
               ol:     ({ children }) => <ol className="list-decimal ml-4 space-y-0.5">{children}</ol>,
               li:     ({ children }) => <li className="leading-snug">{children}</li>,
               strong: ({ children }) => <strong className="font-semibold text-blue-700">{children}</strong>,
               code:   ({ children }) => <code className="bg-gray-200 px-1 rounded text-xs">{children}</code>,
+              a:      ({ href, children }) => href?.startsWith('glosario:') 
+                        ? <TooltipGlosario termino={decodeURIComponent(href.split(':')[1])}>{children}</TooltipGlosario> 
+                        : <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{children}</a>
             }}
           >
-            {mensaje.contenido}
+            {mensaje.contenido.replace(/\[\[T:([^\]]+)\]\]/g, (m, t) => `[${t}](glosario:${encodeURIComponent(t)})`)}
           </ReactMarkdown>
         )}
       </div>
@@ -146,7 +146,23 @@ export function LLMPanel() {
           >
             <div className="max-w-[88%] rounded-2xl rounded-bl-sm px-3.5 py-2.5
                             bg-gray-50 text-gray-800 text-sm ring-1 ring-gray-100">
-              <GlossaryText text={respuestaStreaming} />
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                urlTransform={(value) => value}
+                components={{
+                  p:      ({ children }) => <span className="leading-relaxed">{children}</span>,
+                  ul:     ({ children }) => <ul className="list-disc ml-4 space-y-0.5">{children}</ul>,
+                  ol:     ({ children }) => <ol className="list-decimal ml-4 space-y-0.5">{children}</ol>,
+                  li:     ({ children }) => <li className="leading-snug">{children}</li>,
+                  strong: ({ children }) => <strong className="font-semibold text-blue-700">{children}</strong>,
+                  code:   ({ children }) => <code className="bg-gray-200 px-1 rounded text-xs">{children}</code>,
+                  a:      ({ href, children }) => href?.startsWith('glosario:') 
+                            ? <TooltipGlosario termino={decodeURIComponent(href.split(':')[1])}>{children}</TooltipGlosario> 
+                            : <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{children}</a>
+                }}
+              >
+                {respuestaStreaming.replace(/\[\[T:([^\]]+)\]\]/g, (m, t) => `[${t}](glosario:${encodeURIComponent(t)})`)}
+              </ReactMarkdown>
               <span className="llm-cursor" />
             </div>
           </motion.div>
