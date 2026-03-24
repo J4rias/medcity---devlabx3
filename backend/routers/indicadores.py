@@ -3,7 +3,7 @@ Router de indicadores urbanos y estado de APIs.
 """
 import time, httpx
 from fastapi import APIRouter
-from services.etl import get_indicadores_barrio, get_comunas_geojson, APIS, _medata_headers, check_siata_status
+from services.etl import get_indicadores_barrio, get_comunas_geojson, APIS, _medata_headers, check_siata_status, check_siata_status
 
 router = APIRouter(prefix="/api", tags=["indicadores"])
 
@@ -54,7 +54,7 @@ async def api_status():
         ("MEData Incidentes Viales","http://medata.gov.co/sites/default/files/distribution/1-023-25-000094/incidentes_viales.csv", _medata_headers()),
         ("Socrata Empresas",        "https://www.datos.gov.co/resource/pb3w-3vmc.json?$limit=1",    _medata_headers()),
         ("GeoMedellín",            "https://geomedellin-m-medellin.opendata.arcgis.com/",       {"User-Agent": "Mozilla/5.0"}),
-        ("Gemini API",             "https://generativelanguage.googleapis.com/v1beta/models?key=" + __import__('os').getenv('GEMINI_API_KEY', ''), {}),
+        ("Gemini API",             "https://generativelanguage.googleapis.com/v1beta/models?key=" + __import__('os').getenv('GEMINI_API_KEY', ''), {"User-Agent": "Mozilla/5.0"}),
     ]
 
     resultados = []
@@ -69,7 +69,7 @@ async def api_status():
             try:
                 r = await client.get(url, headers=hdrs)
                 latencia = int((time.time() - t0) * 1000)
-                estado = "online" if r.status_code < 400 else "offline" # Se mapea a offline si el status falla para que muestre el badge rojo
+                estado = "online" if r.status_code < 400 else "offline"
                 if latencia > 4000:
                     estado = "degraded"
             except Exception:
