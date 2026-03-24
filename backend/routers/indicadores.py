@@ -3,7 +3,7 @@ Router de indicadores urbanos y estado de APIs.
 """
 import time, httpx
 from fastapi import APIRouter
-from services.etl import get_indicadores_barrio, get_comunas_geojson, APIS, _medata_headers
+from services.etl import get_indicadores_barrio, get_comunas_geojson, APIS, _medata_headers, check_siata_status
 
 router = APIRouter(prefix="/api", tags=["indicadores"])
 
@@ -50,23 +50,27 @@ async def comunas_geojson():
 async def api_status():
     """Verifica el estado de todas las fuentes de datos externas."""
     fuentes_a_verificar = [
-        ("SIATA Aire PM2.5",       "https://siata.gov.co/EntregaData1/Datos_SIATA_Aire_pm25.json",  {}),
         ("MEData Criminalidad CSV", "http://medata.gov.co/sites/default/files/distribution/1-027-23-000304/consolidado_cantidad_casos_criminalidad_en_comunas_por_anio_mes.csv", _medata_headers()),
         ("MEData Incidentes Viales","http://medata.gov.co/sites/default/files/distribution/1-023-25-000094/incidentes_viales.csv", _medata_headers()),
         ("Socrata Empresas",        "https://www.datos.gov.co/resource/pb3w-3vmc.json?$limit=1",    _medata_headers()),
-        ("GeoMedellín",            "https://www.geomedellin-m-medellin.opendata.arcgis.com/",       {}),
-        ("Gemini API",             "https://generativelanguage.googleapis.com/",                    {}),
+        ("GeoMedellín",            "https://geomedellin-m-medellin.opendata.arcgis.com/",       {"User-Agent": "Mozilla/5.0"}),
+        ("Gemini API",             "https://generativelanguage.googleapis.com/v1beta/models?key=" + __import__('os').getenv('GEMINI_API_KEY', ''), {}),
     ]
 
     resultados = []
-    async with httpx.AsyncClient(timeout=5) as client:
+    
+    # 1. Chequeo Ultrarrápido de SIATA
+    resultados.append(check_siata_status())
+    
+    # 2. Chequeo de las demás fuentes a tiempo real
+    async with httpx.AsyncClient(timeout=10) as client:
         for nombre, url, hdrs in fuentes_a_verificar:
             t0 = time.time()
             try:
                 r = await client.get(url, headers=hdrs)
                 latencia = int((time.time() - t0) * 1000)
-                estado = "online" if r.status_code < 400 else "error"
-                if latencia > 2000:
+                estado = "online" if r.status_code < 400 else "offline" # Se mapea a offline si el status falla para que muestre el badge rojo
+                if latencia > 4000:
                     estado = "degraded"
             except Exception:
                 latencia = None
