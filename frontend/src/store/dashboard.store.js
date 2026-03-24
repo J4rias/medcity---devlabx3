@@ -48,6 +48,7 @@ export const useDashboardStore = create((set, get) => ({
     return {
       rol:             s.rol,
       barrio:          s.barrioActivo?.nombre ?? 'No seleccionado',
+      barrio_id:       s.barrioActivo?.id ?? '',
       comuna:          s.barrioActivo?.comuna ?? '-',
       indicador:       s.indicadorActivo,
       rango:           s.rangoTiempo,

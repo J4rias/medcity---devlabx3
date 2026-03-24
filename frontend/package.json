@@ -27,8 +27,7 @@
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-switch": "^1.1.0",
-    "@radix-ui/react-progress": "^1.1.0",
-    "@radix-ui/react-badge": "^1.0.0"
+    "@radix-ui/react-progress": "^1.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

@@ -38,7 +38,6 @@ export function useIndicadoresBarrio(barrioId) {
     queryFn:   () => fetchIndicadoresBarrio(barrioId),
     enabled:   !!barrioId,
     staleTime: 5 * 60 * 1000,
-    onError:   () => toast.error('Error cargando indicadores del barrio'),
   })
 }
 
@@ -48,7 +47,7 @@ export function useComunasGeoJSON() {
     queryKey:  ['geo', 'comunas'],
     queryFn:   fetchComunasGeoJSON,
     staleTime: Infinity,           // estático, no cambia
-    cacheTime: Infinity,
+    gcTime:    Infinity,
   })
 }
 

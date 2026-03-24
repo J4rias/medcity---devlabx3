@@ -1,5 +1,5 @@
 """
-Router LLM — Gemini 3.1 Flash Lite con streaming SSE.
+Router LLM — Gemini Flash con streaming SSE.
 Incluye pipeline anti-alucinación de 5 actuadores.
 """
 import os, json, asyncio
@@ -8,7 +8,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from cachetools import TTLCache
 from tenacity import retry, stop_after_attempt, wait_exponential
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from services.prompt_builder import build_messages
 from services.validator import validar_respuesta, generar_fallback
@@ -16,16 +17,15 @@ from services.etl import get_indicadores_barrio
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 
-# Configurar Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
-MODEL = genai.GenerativeModel(
-    model_name="gemini-3.1-flash-lite-preview",   # actualizar cuando salga de preview
-    generation_config=genai.types.GenerationConfig(
-        temperature=0.15,       # bajo para respuestas factuales
-        top_p=0.80,
-        top_k=20,
-        max_output_tokens=450,
-    )
+# Configurar Gemini con el nuevo SDK
+_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+MODEL_NAME = "gemini-3.1-flash-lite-preview"
+
+_GEN_CONFIG = types.GenerateContentConfig(
+    temperature=0.15,
+    top_p=0.80,
+    top_k=20,
+    max_output_tokens=450,
 )
 
 # Caché de respuestas (evita llamadas repetidas)
@@ -58,14 +58,29 @@ def _check_rate_limit(session_id: str) -> bool:
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(min=1, max=4))
 async def _llamar_gemini(messages: list) -> str:
-    """Llama a Gemini y retorna la respuesta completa (no streaming interno)."""
-    # Gemini SDK: convertir formato de mensajes
-    history  = messages[:-1]
+    """Llama a Gemini con el nuevo SDK google.genai."""
+    # Construir el contenido: concatenamos todo como un solo prompt (simplificado)
+    # El nuevo SDK puede trabajar con historial de chat
+    history_gemini = []
+    for msg in messages[:-1]:
+        role = "user" if msg["role"] == "user" else "model"
+        history_gemini.append(
+            types.Content(role=role, parts=[types.Part(text=msg["parts"][0])])
+        )
+
     last_msg = messages[-1]["parts"][0]
 
-    chat = MODEL.start_chat(history=history)
-    response = await asyncio.to_thread(chat.send_message, last_msg)
-    return response.text
+    # Llamada asíncrona usando asyncio.to_thread
+    def _sync_call():
+        chat = _client.chats.create(
+            model=MODEL_NAME,
+            config=_GEN_CONFIG,
+            history=history_gemini,
+        )
+        response = chat.send_message(last_msg)
+        return response.text
+
+    return await asyncio.to_thread(_sync_call)
 
 
 async def _stream_texto(texto: str):
@@ -104,11 +119,12 @@ async def chat(req: ChatRequest):
         MAX_REINTENTOS = 2
         respuesta_final = None
         fuente = "llm"
+        query_actual = req.query
 
         for intento in range(MAX_REINTENTOS + 1):
             try:
                 messages = build_messages(
-                    query=req.query,
+                    query=query_actual,
                     contexto=req.contexto,
                     indicadores=indicadores,
                     historial=req.historial,
@@ -123,16 +139,15 @@ async def chat(req: ChatRequest):
                 if validacion.es_valida or intento == MAX_REINTENTOS:
                     respuesta_final = respuesta
                     break
-                # Si falla, reintentar con prompt más estricto añadido a la query
-                req.query = (
+                # Si falla, reintentar con prompt más estricto
+                query_actual = (
                     f"{req.query}\n\n[SISTEMA: Tu respuesta anterior contenía "
                     f"{len(validacion.violaciones)} número(s) no verificable(s). "
                     f"Usa SOLO los valores del bloque VALORES VERIFICADOS.]"
                 )
 
-            except Exception as e:
+            except Exception:
                 if intento == MAX_REINTENTOS:
-                    # A5: Fallback a reglas
                     respuesta_final = generar_fallback(req.contexto, indicadores, req.rol)
                     fuente = "fallback"
 

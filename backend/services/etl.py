@@ -9,7 +9,8 @@ import numpy as np
 import json
 import os
 import math
-from scipy import stats
+
+
 from cachetools import TTLCache
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -456,7 +457,9 @@ def calcular_sigma(serie: list[float], usl: float, lsl: float = 0.0) -> dict:
     sigma  = round(cpk * 3, 2)
 
     # DPMO urbano: días defectuosos por millón de oportunidades
-    dpmo   = int(stats.norm.sf(abs(cpk * 3)) * 2 * 1_000_000)
+    # Implementación nativa de norm.sf (1 - CDF) usando erf para evitar scipy
+    z = abs(cpk * 3)
+    dpmo   = int((1 - 0.5 * (1 + math.erf(z / math.sqrt(2)))) * 2 * 1_000_000)
     dias   = round(dpmo / 1_000_000 * 365)
 
     # Carta I-MR para alertas de control
@@ -583,35 +586,41 @@ async def get_indicadores_barrio(barrio_id: str) -> dict:
         # 1. Base mock (seed determinístico por barrio_id)
         datos = _generar_mock(barrio_id)
 
-        # ── Capa 2: Seguridad y movilidad reales (datos históricos por comuna) ──
-        # El barrio_id coincide con el código de comuna del GeoJSON ("01"…"16", "50"…"90")
-        cod_comuna = barrio_id.zfill(2) if barrio_id.isdigit() else None
+        # ── Capa 2: Seguridad y movilidad reales ──
+        # Resolver nombre para buscar coordenadas si es un ID numérico
+        nombre_comuna = COMUNAS_MEDELLIN.get(barrio_id)
+        search_key = nombre_comuna.lower().replace(" ", "-") if nombre_comuna else barrio_id.lower().replace(" ", "-")
+        
+        # Eliminar tildes para el search_key (belen -> belen)
+        import unicodedata
+        search_key = "".join(c for c in unicodedata.normalize('NFD', search_key) if unicodedata.category(c) != 'Mn')
 
-        seg_scores, mov_scores = await asyncio.gather(
-            get_seguridad_comunas(),
-            get_movilidad_comunas(),
-            return_exceptions=True,
-        )
+        cod_comuna = barrio_id.zfill(2) if barrio_id.isdigit() else _NOMBRE_A_CODIGO.get(barrio_id.lower())
 
-        if isinstance(seg_scores, dict) and cod_comuna and cod_comuna in seg_scores:
-            datos["seguridad"]       = seg_scores[cod_comuna]
-            datos["fuente_seguridad"] = "medata_real"
-        else:
-            datos["fuente_seguridad"] = "mock"
+        # Timeout de 15s para datos reales (MEData puede ser lento)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    get_seguridad_comunas(),
+                    get_movilidad_comunas(),
+                    get_siata_pm25(),
+                    return_exceptions=True,
+                ),
+                timeout=12.0
+            )
+            seg_scores, mov_scores, lecturas = results
 
-        if isinstance(mov_scores, dict) and cod_comuna and cod_comuna in mov_scores:
-            datos["movilidad"]       = mov_scores[cod_comuna]
-            datos["fuente_movilidad"] = "medata_real"
-        else:
-            datos["fuente_movilidad"] = "mock"
+            if isinstance(seg_scores, dict) and cod_comuna and cod_comuna in seg_scores:
+                datos["seguridad"]        = seg_scores[cod_comuna]
+                datos["fuente_seguridad"] = "medata_real"
 
-        # ── Capa 3: Aire real de SIATA (IDW desde coords del barrio) ──────────
-        barrio_key = barrio_id.lower().replace(" ", "-")
-        coords = BARRIOS_COORDS.get(barrio_key)
+            if isinstance(mov_scores, dict) and cod_comuna and cod_comuna in mov_scores:
+                datos["movilidad"]        = mov_scores[cod_comuna]
+                datos["fuente_movilidad"] = "medata_real"
 
-        if coords:
-            lecturas = await get_siata_pm25()
-            if lecturas:
+            # ── Capa 3: Aire real de SIATA ──
+            coords = BARRIOS_COORDS.get(search_key)
+            if coords and not isinstance(lecturas, Exception) and lecturas:
                 pm25_data = asignar_pm25_a_barrio(coords[0], coords[1], lecturas)
                 if pm25_data:
                     datos["pm25"]             = pm25_data["pm25"]
@@ -620,6 +629,11 @@ async def get_indicadores_barrio(barrio_id: str) -> dict:
                     datos["siata_estaciones"] = pm25_data["estaciones_usadas"]
                     datos["fuente_aire"]      = "siata_real"
                     datos["aire_score"]       = round(max(0, min(100, 100 - pm25_data["aqi"] * 0.5)), 1)
+        
+        except asyncio.TimeoutError:
+            # Si MEData/SIATA tarda mucho, seguimos con el mock para no bloquear la UX
+            pass
+
 
         # ── Recalcular ICV compuesto con todos los datos disponibles ───────────
         datos["icv_score"] = calcular_icv(
@@ -692,12 +706,13 @@ def _cat_aqi(aqi: float) -> str:
 
 
 def _fallback_data(barrio_id: str) -> dict:
-    return {"barrio_id": barrio_id, "icv_score": None, "error": "datos no disponibles"}
+    """Fallback si todo falla: retornar al menos el mock para no romper la UI."""
+    return _generar_mock(barrio_id)
 
 
 # ─── GEO COMUNAS ─────────────────────────────────────────────────────────────
 # Ruta al archivo estático embebido (21 features, 16 comunas + 5 corregimientos)
-_GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "comunas.geojson")
+_GEOJSON_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "comunas_wgs84.geojson")
 
 async def get_comunas_geojson() -> dict:
     """

@@ -38,7 +38,7 @@ function KPIsSegunRol({ datos, rol }) {
 
   const configs = {
     ciudadano: [
-      { titulo: 'Calidad de Vida',  valor: datos.icv,       unidad: '/100',   score: datos.icv,       icono: '🏙️', tendencia: datos.tendencia_icv },
+      { titulo: 'Calidad de Vida',  valor: datos.icv_score, unidad: '/100',   score: datos.icv_score, icono: '🏙️', tendencia: datos.tendencia_icv },
       { titulo: 'Seguridad',        valor: datos.seguridad, unidad: '/100',   score: datos.seguridad, icono: '🛡️', tendencia: datos.tendencia_seguridad },
       { titulo: 'Calidad del Aire', valor: datos.aqi,       unidad: 'AQI',    score: 100 - datos.aqi, icono: '🌬️', tendencia: datos.tendencia_aire },
       { titulo: 'Servicios',        valor: datos.servicios, unidad: '/100',   score: datos.servicios, icono: '⚡' },
@@ -50,13 +50,13 @@ function KPIsSegunRol({ datos, rol }) {
       { titulo: 'Negocios/ha',      valor: datos.comercios_ha, unidad: 'neg/ha', score: Math.min(datos.comercios_ha * 5, 100), icono: '🏪' },
     ],
     gobierno: [
-      { titulo: 'ICV Score',        valor: datos.icv,       unidad: '/100',   score: datos.icv,       icono: '📊', tendencia: datos.tendencia_icv },
+      { titulo: 'ICV Score',        valor: datos.icv_score, unidad: '/100',   score: datos.icv_score, icono: '📊', tendencia: datos.tendencia_icv },
       { titulo: 'Percentil Medellín', valor: datos.percentil, unidad: 'pct',  score: datos.percentil, icono: '📈' },
       { titulo: 'Sigma Level',      valor: datos.sigma,     unidad: 'σ',      score: (datos.sigma / 6) * 100, icono: '⚡' },
       { titulo: 'Alertas Activas',  valor: datos.alertas,   unidad: '',       score: datos.alertas === 0 ? 100 : datos.alertas > 2 ? 20 : 60, icono: '🚨' },
     ],
     investigador: [
-      { titulo: 'ICV Score',        valor: datos.icv,       unidad: '/100',   score: datos.icv,       icono: '📊' },
+      { titulo: 'ICV Score',        valor: datos.icv_score, unidad: '/100',   score: datos.icv_score, icono: '📊' },
       { titulo: 'Desv. Estándar',   valor: datos.std,       unidad: '',       score: datos.std < 10 ? 90 : 50, icono: '📉' },
       { titulo: 'DPMO',             valor: datos.dpmo?.toLocaleString('es-CO'), unidad: '', score: datos.dpmo < 6210 ? 90 : 30, icono: '🎯' },
       { titulo: 'N Observaciones',  valor: datos.n_obs,     unidad: '',       score: datos.n_obs > 30 ? 90 : 60, icono: '🔢' },
