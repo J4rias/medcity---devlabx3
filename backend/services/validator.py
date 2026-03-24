@@ -80,7 +80,8 @@ def generar_fallback(contexto: dict, indicadores: dict, rol: str) -> str:
     barrio = contexto.get("barrio", "el barrio seleccionado")
     icv    = indicadores.get("icv_score", "—")
     sigma  = indicadores.get("sigma", "—")
-    alertas= len(indicadores.get("alertas", []))
+    alertas_raw = indicadores.get("alertas", 0)
+    alertas = alertas_raw if isinstance(alertas_raw, int) else len(alertas_raw) if isinstance(alertas_raw, list) else 0
 
     templates = {
         "ciudadano": (

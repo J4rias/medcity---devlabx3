@@ -70,7 +70,7 @@ export function useLLM() {
         const { done, value } = await reader.read()
         if (done) break
 
-        const lines = decoder.decode(value).split('\n\n')
+        const lines = decoder.decode(value, { stream: true }).split('\n\n')
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           try {
@@ -83,7 +83,6 @@ export function useLLM() {
           } catch { /* chunk parcial, ignorar */ }
         }
       }
-
       // Guardar respuesta completa en historial
       agregarMensaje({ rol: 'assistant', contenido: full, ts: Date.now() })
       setRespuestaStreaming('')

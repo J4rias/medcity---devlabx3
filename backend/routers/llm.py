@@ -8,8 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from cachetools import TTLCache
 from tenacity import retry, stop_after_attempt, wait_exponential
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 from services.prompt_builder import build_messages
 from services.validator import validar_respuesta, generar_fallback
@@ -17,16 +16,16 @@ from services.etl import get_indicadores_barrio
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 
-# Configurar Gemini con el nuevo SDK
-_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
+# Configurar Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
 MODEL_NAME = "gemini-3.1-flash-lite-preview"
 
-_GEN_CONFIG = types.GenerateContentConfig(
-    temperature=0.15,
-    top_p=0.80,
-    top_k=20,
-    max_output_tokens=450,
-)
+_GEN_CONFIG = {
+    "temperature": 0.15,
+    "top_p": 0.80,
+    "top_k": 20,
+    "max_output_tokens": 450,
+}
 
 # Caché de respuestas (evita llamadas repetidas)
 _response_cache = TTLCache(maxsize=200, ttl=600)
@@ -58,26 +57,22 @@ def _check_rate_limit(session_id: str) -> bool:
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(min=1, max=4))
 async def _llamar_gemini(messages: list) -> str:
-    """Llama a Gemini con el nuevo SDK google.genai."""
-    # Construir el contenido: concatenamos todo como un solo prompt (simplificado)
-    # El nuevo SDK puede trabajar con historial de chat
-    history_gemini = []
-    for msg in messages[:-1]:
-        role = "user" if msg["role"] == "user" else "model"
-        history_gemini.append(
-            types.Content(role=role, parts=[types.Part(text=msg["parts"][0])])
-        )
+    """Llama a Gemini con google.generativeai SDK."""
 
-    last_msg = messages[-1]["parts"][0]
-
-    # Llamada asíncrona usando asyncio.to_thread
     def _sync_call():
-        chat = _client.chats.create(
-            model=MODEL_NAME,
-            config=_GEN_CONFIG,
-            history=history_gemini,
+        model = genai.GenerativeModel(
+            model_name=MODEL_NAME,
+            generation_config=_GEN_CONFIG,
         )
-        response = chat.send_message(last_msg)
+        # Concatenar todo el contexto en un solo prompt para máxima compatibilidad
+        full_prompt = ""
+        for msg in messages:
+            role = msg.get("role", "user")
+            text = msg.get("parts", [""])[0]
+            if text:
+                full_prompt += f"[{role.upper()}]: {text}\n\n"
+
+        response = model.generate_content(full_prompt)
         return response.text
 
     return await asyncio.to_thread(_sync_call)
