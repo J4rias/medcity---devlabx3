@@ -16,6 +16,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Caché en memoria (TTL según volatilidad del dato)
 _cache = TTLCache(maxsize=500, ttl=300)
+_siata_24h_cache = {"data": None, "timestamp": 0}
 
 # ─── PARÁMETROS EXTERNOS ──────────────────────────────────────────────────────
 MEDATA_TOKEN = os.getenv("MEDATA_APP_TOKEN", "")
@@ -76,8 +77,8 @@ def _medata_headers() -> dict:
     return headers
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
-async def _fetch(url: str, params: dict = None, headers: dict = None) -> dict:
-    async with httpx.AsyncClient(timeout=10) as client:
+async def _fetch(url: str, params: dict = None, headers: dict = None, timeout: float = 30.0) -> dict:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         r = await client.get(url, params=params, headers=headers or {})
         r.raise_for_status()
         return r.json()
@@ -117,39 +118,91 @@ def pm25_a_aqi(pm25: float) -> float:
 async def get_siata_pm25() -> dict:
     """
     Descarga datos reales de SIATA y retorna dict {codigo_serial: pm25_actual}.
-    Filtra calidad > 2.5 y valores -9999. Caché 10 minutos.
+    Filtra calidad > 2.5 y valores -9999. Caché extendida a 24h para el archivo de 13MB.
     """
-    cache_key = "siata:pm25"
-    if cache_key in _cache:
-        return _cache[cache_key]
+    import time
+    now = time.time()
+    
+    # Caché manual de 24 horas (86400 segundos) para el archivo pesado
+    if _siata_24h_cache["data"] is not None and (now - _siata_24h_cache["timestamp"]) < 86400:
+        return _siata_24h_cache["data"]
 
+    cache_key = "siata:pm25:fallbacks"
+    
+    async def _bg_fetch_and_cache():
+        try:
+            # Aumentamos agresivamente a 120s ya que la descarga es de 13MB y la API de SIATA fluctúa
+            data = await _fetch(APIS["siata_aire"], timeout=120.0)
+            resultado = {}
+            for estacion in data:
+                sid = estacion.get("codigoSerial")
+                if sid not in SIATA_ESTACIONES:
+                    continue
+                datos = estacion.get("datos", [])
+                validas = [d for d in datos if d.get("valor", -9999) != -9999 and float(d.get("calidad", 99)) <= SIATA_CALIDAD_MAX]
+                if validas:
+                    ultimo = validas[-1]
+                    resultado[sid] = {
+                        "pm25": float(ultimo["valor"]),
+                        "aqi":  pm25_a_aqi(float(ultimo["valor"])),
+                        "fecha": ultimo["fecha"],
+                        "calidad": float(ultimo["calidad"]),
+                    }
+            
+            _siata_24h_cache["data"] = resultado
+            _siata_24h_cache["timestamp"] = time.time()
+            _cache[cache_key] = resultado
+            return resultado
+        except Exception:
+            if _siata_24h_cache["data"] is not None:
+                _siata_24h_cache["timestamp"] = time.time() - 82800  # Prorroga 1 hora adicional
+                return _siata_24h_cache["data"]
+            return {}
+
+    task = asyncio.create_task(_bg_fetch_and_cache())
     try:
-        data = await _fetch(APIS["siata_aire"])
-        resultado = {}
-        for estacion in data:
-            sid = estacion.get("codigoSerial")
-            if sid not in SIATA_ESTACIONES:
-                continue  # Estaciones _OFF- o no reconocidas
-            datos = estacion.get("datos", [])
-            # Tomar la lectura más reciente válida
-            validas = [
-                d for d in datos
-                if d.get("valor", -9999) != -9999
-                and float(d.get("calidad", 99)) <= SIATA_CALIDAD_MAX
-            ]
-            if validas:
-                ultimo = validas[-1]
-                resultado[sid] = {
-                    "pm25": float(ultimo["valor"]),
-                    "aqi":  pm25_a_aqi(float(ultimo["valor"])),
-                    "fecha": ultimo["fecha"],
-                    "calidad": float(ultimo["calidad"]),
-                }
-        _cache[cache_key] = resultado
-        return resultado
-    except Exception:
-        return {}  # Falla silenciosa → mock en capa superior
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        # Frontend abortó por timeout (12s), pero el task sigue de fondo
+        if _siata_24h_cache["data"] is not None:
+            return _siata_24h_cache["data"]
+        return {}
 
+
+
+def check_siata_status() -> dict:
+    """Verifica de forma ultra-rápida (sólo vía caché) el nivel de frescura de SIATA"""
+    import time
+    now = time.time()
+    
+    if _siata_24h_cache["data"] is not None:
+        segundos_restantes = 86400 - (now - _siata_24h_cache["timestamp"])
+        if segundos_restantes > 0:
+            horas = int(segundos_restantes // 3600)
+            mins = int((segundos_restantes % 3600) // 60)
+            return {
+                "nombre": "SIATA Aire PM2.5",
+                "estado": "online",
+                "latencia": 0,
+                "usandoCache": True,
+                "extra": f"Próximo update en {horas}h {mins}m"
+            }
+        else:
+            return {
+                "nombre": "SIATA Aire PM2.5",
+                "estado": "degraded",
+                "latencia": None,
+                "usandoCache": True,
+                "extra": "Intentando refrescar conexión..."
+            }
+    
+    return {
+        "nombre": "SIATA Aire PM2.5",
+        "estado": "offline",
+        "latencia": None,
+        "usandoCache": False,
+        "extra": "Desconectado"
+    }
 
 def asignar_pm25_a_barrio(barrio_lat: float, barrio_lon: float,
                           lecturas_siata: dict, k: int = 3) -> dict | None:
