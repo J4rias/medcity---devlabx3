@@ -1,0 +1,12 @@
+*.md
+node_modules/
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+dist/
+build/
+.vscode/
+.idea/
+*.log

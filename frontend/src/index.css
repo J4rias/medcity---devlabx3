@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { font-family: 'Inter', sans-serif; }
+
+.leaflet-container { border-radius: 0.75rem; }
+
+/* Tooltip glosario */
+.glosario-term {
+  border-bottom: 1px dashed #60A5FA;
+  color: #2563EB;
+  cursor: help;
+}
+
+/* Carta de control */
+.control-chart-ucl { stroke: #EF4444; stroke-dasharray: 4 2; }
+.control-chart-lcl { stroke: #EF4444; stroke-dasharray: 4 2; }
+.control-chart-mean { stroke: #6B7280; stroke-dasharray: 2 2; }
+
+/* LLM streaming cursor */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.llm-cursor::after {
+  content: '▌';
+  animation: blink 1s infinite;
+  color: #3B82F6;
+}
+
+/* Animación entrada de cards */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
