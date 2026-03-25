@@ -75,10 +75,11 @@ export const useDashboardStore = create((set, get) => ({
   agregarMensaje: (mensaje) => set(s => ({
     historialChat: [...s.historialChat, mensaje]
   })),
-
-  setLLMCargando: (val) => set({ llmCargando: val }),
-  setLLMError:    (err) => set({ llmError: err }),
-  limpiarChat:    ()    => set({ historialChat: [], llmError: null }),
+  setLLMCargando:   (val) => set({ llmCargando: val }),
+  setLLMError:      (err) => set({ llmError: err }),
+  limpiarChat:      ()    => set({ historialChat: [], llmError: null }),
+  chatExpandido:    false,
+  setChatExpandido: (val) => set({ chatExpandido: val }),
 
   // ─────────────────────────────────────────────────────────────────────
   // SECCIÓN 5: GLOSARIO (Niveles de tecnicismo)

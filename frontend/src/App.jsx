@@ -150,12 +150,14 @@ function KPIsSegunRol({ datos, rol }) {
 }
 
 // ─── PANEL DE DATOS ───────────────────────────────────────────────────────────
-function DataPanel({ rol, setRol, indicadores, chatExpanded, setChatExpanded }) {
+function DataPanel({ rol, setRol, indicadores }) {
+  const { chatExpandido } = useDashboardStore()
+
   return (
     <div className="flex flex-col gap-2 p-3 h-full">
       {/* Indicadores — se ocultan verticalmente al expandir chat */}
       <AnimatePresence initial={false}>
-        {!chatExpanded && (
+        {!chatExpandido && (
           <motion.div
             key="indicators"
             initial={{ opacity: 0, height: 0 }}
@@ -193,7 +195,7 @@ function DataPanel({ rol, setRol, indicadores, chatExpanded, setChatExpanded }) 
 
       {/* Chat — crece para llenar el espacio restante */}
       <div className="flex-1 min-h-72">
-        <LLMPanel chatExpanded={chatExpanded} setChatExpanded={setChatExpanded} />
+        <LLMPanel />
       </div>
     </div>
   )
@@ -203,12 +205,11 @@ function DataPanel({ rol, setRol, indicadores, chatExpanded, setChatExpanded }) 
 // APP PRINCIPAL
 // ═════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const { rol, setRol, barrioActivo, indicadorActivo, setIndicador } = useDashboardStore()
+  const { rol, setRol, barrioActivo, indicadorActivo, setIndicador, chatExpandido } = useDashboardStore()
   const { data: indicadores } = useIndicadoresBarrio(barrioActivo?.id)
   const { dark, toggle: toggleDark } = useDarkMode()
-  const [showStatus, setShowStatus]   = useState(false)
-  const [mobileOpen, setMobileOpen]   = useState(false)
-  const [chatExpanded, setChatExpanded] = useState(false)
+  const [showStatus, setShowStatus] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const rolActual  = ROLES.find(r => r.id === rol)
   const roleColor  = rolActual?.colorHex ?? '#0066CC'
@@ -463,14 +464,12 @@ export default function App() {
         <motion.div
           layout
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className={`hidden md:flex w-[375px] flex-col shrink-0 pr-2 ${chatExpanded ? 'overflow-hidden' : 'overflow-y-auto'}`}
+          className={`hidden md:flex w-[375px] flex-col shrink-0 pr-2 ${chatExpandido ? 'overflow-hidden' : 'overflow-y-auto'}`}
         >
           <DataPanel
             rol={rol}
             setRol={setRol}
             indicadores={indicadores}
-            chatExpanded={chatExpanded}
-            setChatExpanded={setChatExpanded}
           />
         </motion.div>
       </div>

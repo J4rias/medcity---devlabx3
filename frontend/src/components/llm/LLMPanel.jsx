@@ -64,8 +64,8 @@ function Burbuja({ mensaje, roleColor }) {
 }
 
 // ─── PANEL PRINCIPAL ──────────────────────────────────────────────────────────
-export function LLMPanel({ chatExpanded = false, setChatExpanded }) {
-  const { rol, barrioActivo, indicadorActivo, historialChat, llmCargando, llmError, limpiarChat } = useDashboardStore()
+export function LLMPanel() {
+  const { rol, barrioActivo, indicadorActivo, historialChat, llmCargando, llmError, limpiarChat, chatExpandido, setChatExpandido } = useDashboardStore()
   const { enviar, respuestaStreaming } = useLLM()
   const [query, setQuery]   = useState('')
   const [sugs, setSugs]     = useState([])
@@ -102,7 +102,7 @@ export function LLMPanel({ chatExpanded = false, setChatExpanded }) {
   const nombreBarrio = barrioActivo?.nombre ?? 'un barrio'
 
   return (
-    <div className="flex flex-col h-full rounded-xl overflow-hidden ring-1"
+    <div className={`flex flex-col h-full rounded-xl overflow-hidden ring-1 transition-all duration-300 ${chatExpandido ? 'shadow-xl' : ''}`}
       style={{ backgroundColor: 'white', borderColor: roleColor + '30' }}>
 
       {/* Header con color del rol */}
@@ -130,21 +130,15 @@ export function LLMPanel({ chatExpanded = false, setChatExpanded }) {
               <Trash2 size={14} />
             </button>
           )}
-          {setChatExpanded && (
-            <button
-              onClick={() => setChatExpanded(e => !e)}
-              className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
-              style={{ '--hover-bg': roleColor + '15' }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = roleColor + '15'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              title={chatExpanded ? 'Restaurar vista' : 'Expandir chat'}
-            >
-              {chatExpanded
-                ? <Minimize2 size={14} />
-                : <Maximize2 size={14} />
-              }
-            </button>
-          )}
+          <button
+            onClick={() => setChatExpandido(!chatExpandido)}
+            className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = roleColor + '15'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            title={chatExpandido ? 'Contraer' : 'Expandir'}
+          >
+            {chatExpandido ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
         </div>
       </div>
 
@@ -297,6 +291,7 @@ export function LLMPanel({ chatExpanded = false, setChatExpanded }) {
         <div className="flex gap-2">
           <input
             value={query}
+            onFocus={() => setChatExpandido(true)}
             onChange={e => handleInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEnviar()}
             placeholder="Pregunta lo que necesites..."
