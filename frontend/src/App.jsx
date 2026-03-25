@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, ChevronRight, ChevronDown, ChevronUp, Sun, Moon, LayoutDashboard, X, Activity } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronUp, Sun, Moon, LayoutDashboard, X, Activity } from 'lucide-react'
 import { MapaComunas }    from './components/map/MapaComunas'
 import { KPICard, KPICardSkeleton } from './components/kpi/KPICard'
 import { SigmaLevel }     from './components/kpi/SigmaLevel'
@@ -194,10 +194,23 @@ export default function App() {
   const [showStatus, setShowStatus] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const rolActual    = ROLES.find(r => r.id === rol)
-  const icvValue     = indicadores?.icv_score || 62.4
-  const roleColor    = rolActual?.colorHex ?? '#0066CC'
-  const roleLight    = rolActual?.light     ?? '#E3F2FD'
+  const rolActual  = ROLES.find(r => r.id === rol)
+  const roleColor  = rolActual?.colorHex ?? '#0066CC'
+  const roleLight  = rolActual?.light     ?? '#E3F2FD'
+
+  // Valor e info del indicador activo
+  const IND_META = {
+    icv:       { campo: 'icv_score', label: 'Índice de Calidad de Vida', unidad: '/100', fallback: 62.4 },
+    seguridad: { campo: 'seguridad', label: 'Seguridad',                 unidad: '/100', fallback: 70   },
+    aire:      { campo: 'aqi',       label: 'Calidad del Aire (AQI)',    unidad: 'AQI',  fallback: 50   },
+    movilidad: { campo: 'movilidad', label: 'Movilidad',                 unidad: '/100', fallback: 65   },
+    economia:  { campo: 'oportunidad_negocio', label: 'Economía',        unidad: '/100', fallback: 60   },
+  }
+  const indMeta    = IND_META[indicadorActivo] ?? IND_META.icv
+  const indValue   = indicadores?.[indMeta.campo] ?? indMeta.fallback
+  const indPct     = indicadorActivo === 'aire'
+                       ? Math.max(0, 100 - indValue)   // AQI: menor es mejor
+                       : Math.min(indValue, 100)
   const [heroExpanded, setHeroExpanded] = useState(false)
 
   return (
@@ -250,9 +263,6 @@ export default function App() {
           >
             <Activity size={15} className="text-white" />
             <span className={`w-2 h-2 rounded-full ${showStatus ? 'bg-emerald-400' : 'bg-white/50'}`} />
-          </button>
-          <button className="p-2 hover:bg-white/20 rounded-xl transition-colors hidden sm:flex" title="Configuración">
-            <Settings size={15} className="text-white" />
           </button>
           {/* Botón mobile para abrir panel */}
           <button
@@ -310,10 +320,12 @@ export default function App() {
             })}
           </div>
 
-          {/* ICV compacto */}
+          {/* Valor del indicador activo — compacto */}
           <div className="flex items-baseline gap-1 shrink-0">
-            <span className="text-xl font-extrabold text-amber-400 leading-none">{icvValue.toFixed(1)}</span>
-            <span className="text-xs opacity-60">/100</span>
+            <span className="text-xl font-extrabold text-amber-400 leading-none">
+              {typeof indValue === 'number' ? indValue.toFixed(1) : indValue}
+            </span>
+            <span className="text-xs opacity-60">{indMeta.unidad}</span>
           </div>
 
           {/* Toggle expand */}
@@ -343,12 +355,19 @@ export default function App() {
               <div className="relative z-10 px-4 pb-3 pt-1">
                 <div className="flex items-end gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs opacity-55 uppercase tracking-widest mb-1">Índice de Calidad de Vida</p>
+                    <p className="text-xs opacity-55 uppercase tracking-widest mb-1">{indMeta.label}</p>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-extrabold text-amber-400 leading-none">{icvValue.toFixed(1)}</span>
-                      <span className="text-base opacity-60">/100</span>
+                      <motion.span
+                        key={`${indicadorActivo}-${indValue}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-4xl font-extrabold text-amber-400 leading-none"
+                      >
+                        {typeof indValue === 'number' ? indValue.toFixed(1) : indValue}
+                      </motion.span>
+                      <span className="text-base opacity-60">{indMeta.unidad}</span>
                     </div>
-                    <div className="progress-bar mt-2" style={{ '--width': `${icvValue}%` }} />
+                    <div className="progress-bar mt-2" style={{ '--width': `${indPct}%` }} />
                     <p className="text-xs opacity-50 mt-1.5">
                       {barrioActivo ? `${barrioActivo.nombre} · ` : ''}Medellín en datos
                     </p>
@@ -408,15 +427,15 @@ export default function App() {
                     {barrioActivo.tipo} {barrioActivo.identificacion}
                   </span>
                 </div>
-                {indicadores?.icv_score && (
+                {indValue != null && (
                   <motion.span
-                    key={indicadores.icv_score}
-                    initial={{ scale: 0.8, opacity: 0 }}
+                    key={`${indicadorActivo}-${indValue}`}
+                    initial={{ scale: 0.85, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-sm font-bold shrink-0"
+                    className="text-sm font-bold shrink-0 uppercase tracking-wide"
                     style={{ color: roleColor }}
                   >
-                    ICV {indicadores.icv_score}
+                    {indicadorActivo.toUpperCase()} {typeof indValue === 'number' ? indValue.toFixed(1) : indValue}
                   </motion.span>
                 )}
               </motion.div>
