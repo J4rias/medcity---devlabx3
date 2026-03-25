@@ -2,33 +2,353 @@
 @tailwind components;
 @tailwind utilities;
 
-* { font-family: 'Inter', sans-serif; }
+/* ═════════════════════════════════════════════════════════════ */
+/* GLOBAL STYLES */
+/* ═════════════════════════════════════════════════════════════ */
 
-.leaflet-container { border-radius: 0.75rem; }
+* {
+  font-family: 'Inter', 'system-ui', '-apple-system', sans-serif;
+}
 
-/* Tooltip glosario */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-gray-50;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* ROLE-BASED CSS VARIABLES (dinámicas según el rol)
+/* Permite cambiar colores en toda la UI sin reescribir estilos */
+/* ═════════════════════════════════════════════════════════════ */
+
+[data-role="ciudadano"] {
+  --role-color: #0066CC;
+  --role-color-light: #E3F2FD;
+  --role-color-dark: #0052A3;
+  --role-color-rgb: 0, 102, 204;
+}
+
+[data-role="comerciante"] {
+  --role-color: #FF6B35;
+  --role-color-light: #FFE5D9;
+  --role-color-dark: #E55A28;
+  --role-color-rgb: 255, 107, 53;
+}
+
+[data-role="gobierno"] {
+  --role-color: #00A651;
+  --role-color-light: #E8F5E9;
+  --role-color-dark: #088839;
+  --role-color-rgb: 0, 166, 81;
+}
+
+[data-role="investigador"] {
+  --role-color: #6C5CE7;
+  --role-color-light: #F3E5F5;
+  --role-color-dark: #5A3FB0;
+  --role-color-rgb: 108, 92, 231;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* ANIMATIONS */
+/* ═════════════════════════════════════════════════════════════ */
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* NAVBAR CORPORATIVO */
+/* ═════════════════════════════════════════════════════════════ */
+
+.navbar-gradient {
+  background: linear-gradient(90deg,
+    #00A651 0%,
+    #0066CC 50%,
+    #003d99 100%);
+  box-shadow: 0 4px 16px rgba(0, 166, 81, 0.15);
+  position: relative;
+}
+
+.navbar-gradient::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 400px; height: 80px;
+  background: radial-gradient(circle at top-right,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 70%);
+  pointer-events: none;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* HERO SECTION */
+/* ═════════════════════════════════════════════════════════════ */
+
+.hero-section {
+  background: linear-gradient(135deg,
+    #00A651 0%,
+    #0066CC 50%,
+    #003d99 100%);
+  box-shadow: 0 20px 60px rgba(0, 166, 81, 0.2);
+  position: relative;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(circle at center,
+    rgba(255, 255, 255, 0.05) 0%,
+    transparent 70%);
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: white;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  font-weight: 300;
+  opacity: 0.95;
+  color: white;
+}
+
+.icv-highlight {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #FFA800;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* PROGRESS BAR */
+/* ═════════════════════════════════════════════════════════════ */
+
+.progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar::after {
+  content: '';
+  display: block;
+  background: linear-gradient(90deg, #FFA800 0%, #FFD700 100%);
+  animation: slideIn 1s ease-out;
+  height: 100%;
+}
+
+@keyframes slideIn {
+  from { width: 0; }
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* KPI CARDS */
+/* ═════════════════════════════════════════════════════════════ */
+
+.kpi-card {
+  border-radius: 1.25rem;
+  transition: all 0.3s ease;
+  border: 2px solid;
+  border-color: var(--role-color, #0066CC);
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(var(--role-color-rgb, 0, 102, 204), 0.2);
+}
+
+.kpi-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--role-color, #0066CC);
+}
+
+.kpi-progress {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.kpi-progress::after {
+  content: '';
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg,
+    var(--role-color, #0066CC) 0%,
+    rgba(var(--role-color-rgb, 0, 102, 204), 0.5) 100%);
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* ROLE SELECTOR */
+/* ═════════════════════════════════════════════════════════════ */
+
+.role-card {
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.role-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  border-color: currentColor;
+}
+
+.role-card.active {
+  border-color: currentColor;
+  background: var(--role-color-light, white);
+  box-shadow: 0 0 0 3px var(--role-color-light, white);
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* LEAFLET MAP */
+/* ═════════════════════════════════════════════════════════════ */
+
+.leaflet-container {
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border: 2px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.leaflet-container:hover {
+  border-color: var(--role-color, #0066CC);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  border: 2px solid var(--role-color, #0066CC) !important;
+}
+
+.leaflet-popup-tip {
+  background: white;
+  border: 2px solid var(--role-color, #0066CC) !important;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* GLOSSARY TOOLTIP */
+/* ═════════════════════════════════════════════════════════════ */
+
 .glosario-term {
   border-bottom: 1px dashed #60A5FA;
   color: #2563EB;
   cursor: help;
+  padding: 0 2px;
+  transition: all 0.2s ease;
 }
 
-/* Carta de control */
-.control-chart-ucl { stroke: #EF4444; stroke-dasharray: 4 2; }
-.control-chart-lcl { stroke: #EF4444; stroke-dasharray: 4 2; }
-.control-chart-mean { stroke: #6B7280; stroke-dasharray: 2 2; }
+.glosario-term:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
 
-/* LLM streaming cursor */
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+/* ═════════════════════════════════════════════════════════════ */
+/* CONTROL CHART (Recharts) */
+/* ═════════════════════════════════════════════════════════════ */
+
+.control-chart-ucl {
+  stroke: #EF4444;
+  stroke-dasharray: 4 2;
+}
+
+.control-chart-lcl {
+  stroke: #EF4444;
+  stroke-dasharray: 4 2;
+}
+
+.control-chart-mean {
+  stroke: #6B7280;
+  stroke-dasharray: 2 2;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* LLM CHAT CURSOR */
+/* ═════════════════════════════════════════════════════════════ */
+
 .llm-cursor::after {
   content: '▌';
   animation: blink 1s infinite;
-  color: #3B82F6;
+  color: var(--role-color, #0066CC);
 }
 
-/* Animación entrada de cards */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ═════════════════════════════════════════════════════════════ */
+/* SCROLLBAR PERSONALIZADO */
+/* ═════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 8px;
 }
-.animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00A651;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0066CC;
+}
+
+/* ═════════════════════════════════════════════════════════════ */
+/* UTILITY CLASSES */
+/* ═════════════════════════════════════════════════════════════ */
+
+.text-gradient {
+  background: linear-gradient(135deg, #00A651 0%, #0066CC 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card {
+  @apply bg-white rounded-2xl p-6 shadow-sm ring-1 ring-gray-100 transition-all hover:shadow-md;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
