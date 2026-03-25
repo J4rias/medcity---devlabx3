@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, RefreshCw, Trash2, Bot, Sparkles } from 'lucide-react'
+import { Send, RefreshCw, Trash2, Bot, Sparkles, Maximize2, Minimize2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useDashboardStore } from '../../store/dashboard.store'
@@ -64,7 +64,7 @@ function Burbuja({ mensaje, roleColor }) {
 }
 
 // ─── PANEL PRINCIPAL ──────────────────────────────────────────────────────────
-export function LLMPanel() {
+export function LLMPanel({ chatExpanded = false, setChatExpanded }) {
   const { rol, barrioActivo, indicadorActivo, historialChat, llmCargando, llmError, limpiarChat } = useDashboardStore()
   const { enviar, respuestaStreaming } = useLLM()
   const [query, setQuery]   = useState('')
@@ -109,7 +109,7 @@ export function LLMPanel() {
       <div className="flex items-center justify-between px-4 py-3 border-b"
         style={{ borderColor: roleColor + '20', backgroundColor: roleLight }}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ backgroundColor: roleColor }}>
             <Sparkles size={14} className="text-white" />
           </div>
@@ -120,15 +120,32 @@ export function LLMPanel() {
             </p>
           </div>
         </div>
-        {historialChat.length > 0 && (
-          <button
-            onClick={limpiarChat}
-            className="p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-red-50 hover:text-red-500"
-            title="Limpiar conversación"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {historialChat.length > 0 && (
+            <button
+              onClick={limpiarChat}
+              className="p-1.5 rounded-lg transition-colors text-gray-400 hover:bg-red-50 hover:text-red-500"
+              title="Limpiar conversación"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+          {setChatExpanded && (
+            <button
+              onClick={() => setChatExpanded(e => !e)}
+              className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600"
+              style={{ '--hover-bg': roleColor + '15' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = roleColor + '15'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              title={chatExpanded ? 'Restaurar vista' : 'Expandir chat'}
+            >
+              {chatExpanded
+                ? <Minimize2 size={14} />
+                : <Maximize2 size={14} />
+              }
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Historial de mensajes */}

@@ -149,36 +149,41 @@ function KPIsSegunRol({ datos, rol }) {
   )
 }
 
-// ─── PANEL DE DATOS (reutilizable en desktop y mobile drawer) ─────────────────
-function DataPanel({ rol, setRol, indicadores }) {
+// ─── PANEL DE DATOS ───────────────────────────────────────────────────────────
+function DataPanel({ rol, setRol, indicadores, chatExpanded, setChatExpanded }) {
   return (
     <div className="flex flex-col gap-2 p-3">
-      <RoleSelector rol={rol} setRol={setRol} />
+      {/* Cuando el chat está expandido solo mostramos el chat */}
+      {!chatExpanded && (
+        <>
+          <RoleSelector rol={rol} setRol={setRol} />
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`${rol}-${indicadores?.barrio_id}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <KPIsSegunRol datos={indicadores} rol={rol} />
-        </motion.div>
-      </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${rol}-${indicadores?.barrio_id}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <KPIsSegunRol datos={indicadores} rol={rol} />
+            </motion.div>
+          </AnimatePresence>
 
-      {indicadores && (
-        <SigmaLevel
-          sigma={indicadores.sigma}
-          dpmo={indicadores.dpmo}
-          diasDefectuosos={indicadores.dias_defectuosos}
-        />
+          {indicadores && (
+            <SigmaLevel
+              sigma={indicadores.sigma}
+              dpmo={indicadores.dpmo}
+              diasDefectuosos={indicadores.dias_defectuosos}
+            />
+          )}
+
+          <TendenciaChart />
+        </>
       )}
 
-      <TendenciaChart />
-
-      <div className="min-h-72">
-        <LLMPanel />
+      <div className={chatExpanded ? 'flex-1' : 'min-h-72'}>
+        <LLMPanel chatExpanded={chatExpanded} setChatExpanded={setChatExpanded} />
       </div>
     </div>
   )
@@ -191,8 +196,9 @@ export default function App() {
   const { rol, setRol, barrioActivo, indicadorActivo, setIndicador } = useDashboardStore()
   const { data: indicadores } = useIndicadoresBarrio(barrioActivo?.id)
   const { dark, toggle: toggleDark } = useDarkMode()
-  const [showStatus, setShowStatus] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [showStatus, setShowStatus]   = useState(false)
+  const [mobileOpen, setMobileOpen]   = useState(false)
+  const [chatExpanded, setChatExpanded] = useState(false)
 
   const rolActual  = ROLES.find(r => r.id === rol)
   const roleColor  = rolActual?.colorHex ?? '#0066CC'
@@ -396,8 +402,17 @@ export default function App() {
       {/* ═══════════════ CONTENIDO PRINCIPAL ═════════════════════════════════ */}
       <div className="flex flex-1 overflow-hidden min-h-0">
 
-        {/* PANEL IZQUIERDO: MAPA */}
-        <div className="flex-1 flex flex-col p-2 gap-2 min-w-0">
+        {/* PANEL IZQUIERDO: MAPA — oculto cuando chat expandido */}
+        <AnimatePresence initial={false}>
+        {!chatExpanded && (
+        <motion.div
+          key="map-panel"
+          initial={{ opacity: 0, width: 0 }}
+          animate={{ opacity: 1, width: 'auto' }}
+          exit={{ opacity: 0, width: 0 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="flex-1 flex flex-col p-2 gap-2 min-w-0 overflow-hidden"
+        >
           <div className="flex-1 relative rounded-xl overflow-hidden min-h-0">
             <MapaComunas indicadoresData={indicadores?.mapa} />
           </div>
@@ -441,16 +456,24 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
         {/* PANEL DERECHO — DESKTOP */}
-        <div className="hidden md:flex w-[375px] flex-col overflow-y-auto shrink-0 pr-2">
+        <motion.div
+          layout
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className={`hidden md:flex flex-col overflow-y-auto shrink-0 pr-2 ${chatExpanded ? 'flex-1' : 'w-[375px]'}`}
+        >
           <DataPanel
             rol={rol}
             setRol={setRol}
             indicadores={indicadores}
+            chatExpanded={chatExpanded}
+            setChatExpanded={setChatExpanded}
           />
-        </div>
+        </motion.div>
       </div>
 
       {/* ═══════════════ MOBILE DRAWER ════════════════════════════════════════ */}
