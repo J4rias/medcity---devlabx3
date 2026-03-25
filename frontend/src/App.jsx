@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Settings, ChevronRight, ChevronDown, ChevronUp, Sun, Moon, LayoutDashboard, X } from 'lucide-react'
+import { Settings, ChevronRight, ChevronDown, ChevronUp, Sun, Moon, LayoutDashboard, X, Activity } from 'lucide-react'
 import { MapaComunas }    from './components/map/MapaComunas'
 import { KPICard, KPICardSkeleton } from './components/kpi/KPICard'
 import { SigmaLevel }     from './components/kpi/SigmaLevel'
@@ -150,7 +150,7 @@ function KPIsSegunRol({ datos, rol }) {
 }
 
 // ─── PANEL DE DATOS (reutilizable en desktop y mobile drawer) ─────────────────
-function DataPanel({ rol, setRol, indicadores, showStatus, setShowStatus }) {
+function DataPanel({ rol, setRol, indicadores }) {
   return (
     <div className="flex flex-col gap-2 p-3">
       <RoleSelector rol={rol} setRol={setRol} />
@@ -165,25 +165,6 @@ function DataPanel({ rol, setRol, indicadores, showStatus, setShowStatus }) {
         >
           <KPIsSegunRol datos={indicadores} rol={rol} />
         </motion.div>
-      </AnimatePresence>
-
-      <button
-        onClick={() => setShowStatus(s => !s)}
-        className="py-1.5 rounded-xl ring-1 ring-gray-200 bg-white text-gray-400
-                   hover:text-gray-600 transition-colors text-center text-xs font-medium"
-      >
-        {showStatus ? '✓ APIs OK' : 'Ver estado APIs'}
-      </button>
-      <AnimatePresence>
-        {showStatus && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <APIStatus />
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {indicadores && (
@@ -210,8 +191,8 @@ export default function App() {
   const { rol, setRol, barrioActivo, indicadorActivo, setIndicador } = useDashboardStore()
   const { data: indicadores } = useIndicadoresBarrio(barrioActivo?.id)
   const { dark, toggle: toggleDark } = useDarkMode()
-  const [showStatus, setShowStatus]   = useState(false)
-  const [mobileOpen, setMobileOpen]   = useState(false)
+  const [showStatus, setShowStatus] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   const rolActual    = ROLES.find(r => r.id === rol)
   const icvValue     = indicadores?.icv_score || 62.4
@@ -262,8 +243,13 @@ export default function App() {
         {/* Acciones */}
         <div className="flex items-center gap-1">
           <DarkToggle dark={dark} toggle={toggleDark} />
-          <button className="p-2 hover:bg-white/20 rounded-xl transition-colors hidden sm:flex" title="Notificaciones">
-            <Bell size={15} className="text-white" />
+          <button
+            onClick={() => setShowStatus(s => !s)}
+            className="p-2 hover:bg-white/20 rounded-xl transition-colors hidden sm:flex items-center gap-1.5"
+            title="Estado de APIs"
+          >
+            <Activity size={15} className="text-white" />
+            <span className={`w-2 h-2 rounded-full ${showStatus ? 'bg-emerald-400' : 'bg-white/50'}`} />
           </button>
           <button className="p-2 hover:bg-white/20 rounded-xl transition-colors hidden sm:flex" title="Configuración">
             <Settings size={15} className="text-white" />
@@ -278,6 +264,20 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {/* ═══════════════ API STATUS DROPDOWN ════════════════════════════════ */}
+      <AnimatePresence>
+        {showStatus && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden shrink-0 mx-2 mt-1"
+          >
+            <APIStatus />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══════════════ HERO SECTION — COLAPSABLE ════════════════════════════ */}
       <div className="hero-section mx-2 mt-2 mb-1 rounded-2xl text-white shrink-0 overflow-hidden">
@@ -430,8 +430,6 @@ export default function App() {
             rol={rol}
             setRol={setRol}
             indicadores={indicadores}
-            showStatus={showStatus}
-            setShowStatus={setShowStatus}
           />
         </div>
       </div>
