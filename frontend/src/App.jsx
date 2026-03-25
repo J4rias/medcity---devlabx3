@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Settings, ChevronRight, Sun, Moon, LayoutDashboard, X } from 'lucide-react'
+import { Bell, Settings, ChevronRight, ChevronDown, ChevronUp, Sun, Moon, LayoutDashboard, X } from 'lucide-react'
 import { MapaComunas }    from './components/map/MapaComunas'
 import { KPICard, KPICardSkeleton } from './components/kpi/KPICard'
 import { SigmaLevel }     from './components/kpi/SigmaLevel'
@@ -213,10 +213,11 @@ export default function App() {
   const [showStatus, setShowStatus]   = useState(false)
   const [mobileOpen, setMobileOpen]   = useState(false)
 
-  const rolActual = ROLES.find(r => r.id === rol)
-  const icvValue  = indicadores?.icv_score || 62.4
-  const roleColor = rolActual?.colorHex ?? '#0066CC'
-  const roleLight = rolActual?.light     ?? '#E3F2FD'
+  const rolActual    = ROLES.find(r => r.id === rol)
+  const icvValue     = indicadores?.icv_score || 62.4
+  const roleColor    = rolActual?.colorHex ?? '#0066CC'
+  const roleLight    = rolActual?.light     ?? '#E3F2FD'
+  const [heroExpanded, setHeroExpanded] = useState(false)
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" data-role={rol}
@@ -278,56 +279,100 @@ export default function App() {
         </div>
       </nav>
 
-      {/* ═══════════════ HERO SECTION ═════════════════════════════════════════ */}
-      <motion.section
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="hero-section mx-2 mt-2 mb-1 rounded-2xl px-4 py-3 text-white shrink-0"
-      >
-        <div className="relative z-10 flex items-center justify-between gap-3">
-          {/* ICV */}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs opacity-60 font-medium uppercase tracking-wider">Medellín en Datos</p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <motion.span
-                key={icvValue}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl font-extrabold text-amber-400 leading-none"
-              >
-                {icvValue.toFixed(1)}
-              </motion.span>
-              <span className="text-sm opacity-60">/100 ICV</span>
-            </div>
-            <div className="progress-bar mt-2" style={{ '--width': `${icvValue}%` }} />
-          </div>
+      {/* ═══════════════ HERO SECTION — COLAPSABLE ════════════════════════════ */}
+      <div className="hero-section mx-2 mt-2 mb-1 rounded-2xl text-white shrink-0 overflow-hidden">
 
-          {/* Selector de indicadores */}
-          <div className="flex flex-col gap-0.5 shrink-0">
+        {/* ── BARRA COMPACTA (siempre visible) ── */}
+        <div
+          className="relative z-10 flex items-center gap-3 px-4 py-2 cursor-pointer"
+          onClick={() => setHeroExpanded(e => !e)}
+        >
+          {/* Indicadores como pills horizontales */}
+          <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto no-scrollbar">
             {INDICADORES.map((ind) => {
               const activo = indicadorActivo === ind.id
               return (
-                <motion.button
+                <button
                   key={ind.id}
-                  onClick={() => setIndicador(ind.id)}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all"
+                  onClick={(e) => { e.stopPropagation(); setIndicador(ind.id) }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs whitespace-nowrap transition-all shrink-0"
                   style={{
-                    backgroundColor: activo ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.12)',
-                    color:           activo ? '#065F46'                 : 'rgba(255,255,255,0.8)',
+                    backgroundColor: activo ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)',
+                    color:           activo ? '#065F46'                 : 'rgba(255,255,255,0.85)',
                     fontWeight:      activo ? 700 : 500,
+                    boxShadow:       activo ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
                   }}
                 >
-                  <span>{ind.icono}</span>
-                  <span className="hidden sm:inline">{ind.label}</span>
-                  {activo && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 hidden sm:block" />}
-                </motion.button>
+                  {ind.icono} {ind.label}
+                  {activo && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-0.5" />}
+                </button>
               )
             })}
           </div>
+
+          {/* ICV compacto */}
+          <div className="flex items-baseline gap-1 shrink-0">
+            <span className="text-xl font-extrabold text-amber-400 leading-none">{icvValue.toFixed(1)}</span>
+            <span className="text-xs opacity-60">/100</span>
+          </div>
+
+          {/* Toggle expand */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setHeroExpanded(e2 => !e2) }}
+            className="p-1 rounded-lg hover:bg-white/20 transition-colors shrink-0"
+            title={heroExpanded ? 'Colapsar' : 'Expandir'}
+          >
+            {heroExpanded
+              ? <ChevronUp size={14} className="text-white/70" />
+              : <ChevronDown size={14} className="text-white/70" />
+            }
+          </button>
         </div>
-      </motion.section>
+
+        {/* ── PANEL EXPANDIDO ── */}
+        <AnimatePresence initial={false}>
+          {heroExpanded && (
+            <motion.div
+              key="hero-expanded"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="relative z-10 px-4 pb-3 pt-1">
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs opacity-55 uppercase tracking-widest mb-1">Índice de Calidad de Vida</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-extrabold text-amber-400 leading-none">{icvValue.toFixed(1)}</span>
+                      <span className="text-base opacity-60">/100</span>
+                    </div>
+                    <div className="progress-bar mt-2" style={{ '--width': `${icvValue}%` }} />
+                    <p className="text-xs opacity-50 mt-1.5">
+                      {barrioActivo ? `${barrioActivo.nombre} · ` : ''}Medellín en datos
+                    </p>
+                  </div>
+                  {/* Mini stats */}
+                  <div className="grid grid-cols-2 gap-2 shrink-0">
+                    {[
+                      { label: 'Seguridad', val: indicadores?.seguridad ?? '—' },
+                      { label: 'AQI',       val: indicadores?.aqi       ?? '—' },
+                      { label: 'Movilidad', val: indicadores?.movilidad ?? '—' },
+                      { label: 'Servicios', val: indicadores?.servicios ?? '—' },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="text-center bg-white/10 rounded-xl px-3 py-1.5">
+                        <p className="text-xs opacity-60">{label}</p>
+                        <p className="text-sm font-bold text-white">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ═══════════════ CONTENIDO PRINCIPAL ═════════════════════════════════ */}
       <div className="flex flex-1 overflow-hidden min-h-0">
