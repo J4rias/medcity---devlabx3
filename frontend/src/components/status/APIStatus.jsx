@@ -66,7 +66,6 @@ export function APIStatus() {
               className="flex items-center justify-between"
             >
               <div className="flex items-start gap-2 min-w-0">
-                <div className="flex items-start gap-2 min-w-0">
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs text-gray-600 truncate">{f.nombre}</span>
                   {f.extra && (
@@ -74,11 +73,7 @@ export function APIStatus() {
                   )}
                 </div>
                 {f.usandoCache && (
-                  <span className="text-xs text-orange-500 shrink-0 mt-0.5">📦 caché</span>
-                )}
-              </div>
-                {f.usandoCache && (
-                  <span className="text-xs text-orange-500 shrink-0 mt-0.5">📦 caché</span>
+                  <span className="text-xs text-orange-500 shrink-0 mt-0.5 ml-1">📦 caché</span>
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">

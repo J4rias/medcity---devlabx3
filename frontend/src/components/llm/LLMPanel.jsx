@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, RefreshCw, Trash2 } from 'lucide-react'
+import { Send, RefreshCw, Trash2, Minimize2, Maximize2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useDashboardStore } from '../../store/dashboard.store'
@@ -49,7 +49,7 @@ function Burbuja({ mensaje }) {
 
 // ─── PANEL PRINCIPAL ──────────────────────────────────────────────────────────
 export function LLMPanel() {
-  const { rol, barrioActivo, indicadorActivo, historialChat, llmCargando, llmError, limpiarChat } = useDashboardStore()
+  const { rol, barrioActivo, indicadorActivo, historialChat, llmCargando, llmError, limpiarChat, chatExpandido, setChatExpandido } = useDashboardStore()
   const { enviar, respuestaStreaming } = useLLM()
   const [query, setQuery]   = useState('')
   const [sugs, setSugs]     = useState([])
@@ -82,25 +82,38 @@ export function LLMPanel() {
   const nombreBarrio = barrioActivo?.nombre ?? 'un barrio'
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl ring-1 ring-gray-100 overflow-hidden">
+    <div className={`flex flex-col h-full bg-white rounded-xl ring-1 ring-gray-100 overflow-hidden transition-all duration-300 ${
+      chatExpandido ? 'shadow-xl' : ''
+    }`}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <div>
-          <p className="text-sm font-semibold text-gray-800">🤖 Asistente MedCity</p>
+          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            🤖 Asistente MedCity
+          </p>
           <p className="text-xs text-gray-400">
             {barrioActivo ? `Analizando ${nombreBarrio}` : 'Selecciona un barrio en el mapa'}
           </p>
         </div>
-        {historialChat.length > 0 && (
+        <div className="flex items-center gap-1">
+          {historialChat.length > 0 && (
+            <button
+              onClick={limpiarChat}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="Limpiar conversación"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
           <button
-            onClick={limpiarChat}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-            title="Limpiar conversación"
+            onClick={() => setChatExpandido(!chatExpandido)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+            title={chatExpandido ? "Contraer" : "Expandir"}
           >
-            <Trash2 size={15} />
+            {chatExpandido ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
-        )}
+        </div>
       </div>
 
       {/* Historial de mensajes */}
@@ -226,6 +239,7 @@ export function LLMPanel() {
         <div className="flex gap-2">
           <input
             value={query}
+            onFocus={() => setChatExpandido(true)}
             onChange={e => handleInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEnviar()}
             placeholder="Pregunta lo que necesites..."

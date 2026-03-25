@@ -74,7 +74,7 @@ function KPIsSegunRol({ datos, rol }) {
 
 // ─── APP PRINCIPAL ────────────────────────────────────────────────────────────
 export default function App() {
-  const { rol, setRol, barrioActivo, indicadorActivo, setIndicador } = useDashboardStore()
+  const { rol, setRol, barrioActivo, indicadorActivo, setIndicador, chatExpandido } = useDashboardStore()
   const { data: indicadores, isLoading } = useIndicadoresBarrio(barrioActivo?.id)
   const refreshAll = useRefreshAll()
   const [showStatus, setShowStatus] = useState(false)
@@ -176,52 +176,55 @@ export default function App() {
       </div>
 
       {/* ── PANEL DERECHO: DATOS + LLM ── */}
-      <div className="w-96 flex flex-col gap-3 p-4 pl-0 overflow-y-auto">
-
-        {/* Role Switcher */}
-        <div className="bg-white ring-1 ring-gray-100 rounded-xl p-1 flex gap-1">
-          {ROLES.map(r => (
-            <button
-              key={r.id}
-              onClick={() => setRol(r.id)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                rol === r.id
-                  ? `${r.color} text-white shadow-sm`
-                  : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              {r.icono} {r.label}
-            </button>
-          ))}
-        </div>
+      <div className={`w-96 flex flex-col gap-3 p-4 pl-0 relative ${chatExpandido ? 'overflow-hidden h-full' : 'overflow-y-auto'}`}>
 
         {/* KPIs según rol */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${rol}-${barrioActivo?.id}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <KPIsSegunRol datos={indicadores} rol={rol} />
-          </motion.div>
+        <AnimatePresence mode="popLayout">
+          {!chatExpandido && (
+            <motion.div
+              key={`${rol}-${barrioActivo?.id}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="space-y-3"
+            >
+              {/* Role Switcher */}
+              <div className="bg-white ring-1 ring-gray-100 rounded-xl p-1 flex gap-1">
+                {ROLES.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => setRol(r.id)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      rol === r.id
+                        ? `${r.color} text-white shadow-sm`
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    {r.icono} {r.label}
+                  </button>
+                ))}
+              </div>
+
+              <KPIsSegunRol datos={indicadores} rol={rol} />
+
+              {/* Sigma Level */}
+              {indicadores && (
+                <SigmaLevel
+                  sigma={indicadores.sigma}
+                  dpmo={indicadores.dpmo}
+                  diasDefectuosos={indicadores.dias_defectuosos}
+                />
+              )}
+
+              {/* Gráfica de tendencia */}
+              <TendenciaChart />
+            </motion.div>
+          )}
         </AnimatePresence>
 
-        {/* Sigma Level */}
-        {indicadores && (
-          <SigmaLevel
-            sigma={indicadores.sigma}
-            dpmo={indicadores.dpmo}
-            diasDefectuosos={indicadores.dias_defectuosos}
-          />
-        )}
-
-        {/* Gráfica de tendencia */}
-        <TendenciaChart />
-
         {/* Panel LLM */}
-        <div className="flex-1 min-h-72">
+        <div className={`transition-all duration-300 ${chatExpandido ? 'flex-1 overflow-hidden' : 'h-72 min-h-72'}`}>
           <LLMPanel />
         </div>
 

@@ -36,6 +36,8 @@ export const useDashboardStore = create((set, get) => ({
   setLLMCargando: (val)   => set({ llmCargando: val }),
   setLLMError:    (err)   => set({ llmError: err }),
   limpiarChat:    ()      => set({ historialChat: [], llmError: null }),
+  chatExpandido:  false,
+  setChatExpandido: (val) => set({ chatExpandido: val }),
 
   // ── Glosario ──────────────────────────────────────────────────────────────
   nivelGlosario: 'simple',   // simple | tecnico (se adapta al rol)
