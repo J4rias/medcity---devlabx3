@@ -5,11 +5,26 @@ import { useComunasGeoJSON } from '../../hooks/useIndicadores'
 import { useDashboardStore } from '../../store/dashboard.store'
 import 'leaflet/dist/leaflet.css'
 
-// Medellín centrado
 const MEDELLIN_CENTER = [6.2442, -75.5812]
 const ZOOM_INICIAL    = 12
 
-// Colorea cada barrio según el indicador activo y su score
+const INDICADOR_LABELS = {
+  icv:       { label: 'Calidad de Vida', unit: '/100' },
+  seguridad: { label: 'Seguridad',       unit: '/100' },
+  aire:      { label: 'Calidad del Aire', unit: 'AQI' },
+  movilidad: { label: 'Movilidad',       unit: '/100' },
+  economia:  { label: 'Economía',        unit: '/100' },
+}
+
+const LEYENDA_RANGOS = [
+  { color: '#059669', label: 'Excelente', rango: '90–100' },
+  { color: '#10B981', label: 'Bueno',     rango: '75–89'  },
+  { color: '#F59E0B', label: 'Atención',  rango: '50–74'  },
+  { color: '#F97316', label: 'Riesgo',    rango: '30–49'  },
+  { color: '#EF4444', label: 'Crítico',   rango: '0–29'   },
+  { color: '#E5E7EB', label: 'Sin datos', rango: '—'      },
+]
+
 function getColorPorScore(score) {
   if (score === undefined || score === null) return '#E5E7EB'
   if (score >= 90) return '#059669'
@@ -19,7 +34,6 @@ function getColorPorScore(score) {
   return '#EF4444'
 }
 
-// Componente para hacer zoom a barrio seleccionado
 function ZoomAlBarrio({ barrio }) {
   const map = useMap()
   useEffect(() => {
@@ -34,39 +48,47 @@ export function MapaComunas({ indicadoresData }) {
   const { barrioActivo, setBarrio, indicadorActivo } = useDashboardStore()
   const { data: geojson, isLoading } = useComunasGeoJSON()
 
-  // Estilo dinámico por feature
   const getEstilo = (feature) => {
     const id    = feature.properties?.CODIGO ?? feature.properties?.codigo
     const datos = indicadoresData?.[id]
     const score = datos?.[indicadorActivo] ?? null
-
     const estaActivo = barrioActivo?.id === id
 
     return {
       fillColor:   getColorPorScore(score),
-      fillOpacity: estaActivo ? 0.9 : 0.65,
+      fillOpacity: estaActivo ? 0.92 : 0.68,
       color:       estaActivo ? '#1D4ED8' : '#FFFFFF',
-      weight:      estaActivo ? 2.5 : 0.8,
+      weight:      estaActivo ? 3 : 0.8,
     }
   }
 
-  // Eventos por barrio (hover + click)
   const onCadaFeature = (feature, layer) => {
     const nombre = feature.properties?.NOMBRE ?? feature.properties?.nombre ?? 'Barrio'
     const id     = feature.properties?.CODIGO ?? feature.properties?.codigo
     const datos  = indicadoresData?.[id] ?? {}
+    const tipo   = feature.properties?.tipo ?? 'Comuna'
+    const ident  = feature.properties?.identificacion ?? ''
 
-    const tipo  = feature.properties?.tipo ?? 'Comuna'
-    const ident = feature.properties?.identificacion ?? ''
+    const score  = datos[indicadorActivo]
+    const color  = getColorPorScore(score)
+    const indInfo = INDICADOR_LABELS[indicadorActivo] ?? { label: indicadorActivo, unit: '' }
+
     layer.bindTooltip(`
-      <div class="font-semibold text-gray-800">${nombre}</div>
-      <div class="text-xs text-gray-400 mb-1">${ident || tipo}</div>
-      <div class="text-xs text-gray-600">
-        ICV: <b>${datos.icv_score ?? '—'}</b>/100 &nbsp;|&nbsp;
-        AQI: <b>${datos.aqi ?? '—'}</b>
-        ${datos.fuente_aire === 'siata_real' ? ' 🟢' : ''}
+      <div style="min-width:140px">
+        <div style="font-weight:600; color:#1F2937; font-size:13px; margin-bottom:2px">${nombre}</div>
+        <div style="color:#9CA3AF; font-size:11px; margin-bottom:6px">${ident || tipo}</div>
+        <div style="display:flex; align-items:center; gap:6px">
+          <div style="width:10px;height:10px;border-radius:3px;background:${color};flex-shrink:0"></div>
+          <span style="font-size:12px;color:#374151">
+            ${indInfo.label}: <b style="color:${color}">${score ?? '—'}</b>${score ? indInfo.unit : ''}
+          </span>
+        </div>
+        ${datos.aqi !== undefined && indicadorActivo !== 'aire' ? `
+          <div style="font-size:11px;color:#9CA3AF;margin-top:4px">
+            AQI: ${datos.aqi ?? '—'} ${datos.fuente_aire === 'siata_real' ? '🟢' : ''}
+          </div>` : ''}
       </div>
-    `, { sticky: true, className: 'rounded-lg shadow-lg border-0' })
+    `, { sticky: true, className: 'map-tooltip' })
 
     layer.on({
       click: () => setBarrio({
@@ -74,9 +96,9 @@ export function MapaComunas({ indicadoresData }) {
         nombre,
         tipo,
         identificacion: ident,
-        bbox:    layer.getBounds(),
+        bbox: layer.getBounds(),
       }),
-      mouseover: (e) => e.target.setStyle({ fillOpacity: 0.9, weight: 2 }),
+      mouseover: (e) => e.target.setStyle({ fillOpacity: 0.92, weight: 2.5 }),
       mouseout:  (e) => e.target.setStyle(getEstilo(feature)),
     })
   }
@@ -84,15 +106,17 @@ export function MapaComunas({ indicadoresData }) {
   if (isLoading) {
     return (
       <div className="w-full h-full bg-gray-100 rounded-xl animate-pulse
-                      flex items-center justify-center text-gray-400">
+                      flex items-center justify-center text-gray-400 text-sm">
         Cargando mapa...
       </div>
     )
   }
 
+  const indInfo = INDICADOR_LABELS[indicadorActivo] ?? { label: indicadorActivo, unit: '' }
+
   return (
     <motion.div
-      className="w-full h-full rounded-xl overflow-hidden shadow-sm"
+      className="w-full h-full rounded-xl overflow-hidden shadow-sm relative"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -120,26 +144,56 @@ export function MapaComunas({ indicadoresData }) {
         <ZoomAlBarrio barrio={barrioActivo} />
       </MapContainer>
 
-      {/* Leyenda */}
-      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm
-                      rounded-xl p-3 shadow-md text-xs space-y-1 z-[1000]">
-        <p className="font-semibold text-gray-600 mb-1.5">
-          {indicadorActivo.toUpperCase()}
+      {/* Leyenda flotante mejorada */}
+      <motion.div
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.5 }}
+        className="absolute bottom-4 left-4 z-[1000]"
+        style={{
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '14px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+          padding: '12px 14px',
+          minWidth: '150px',
+          border: '1px solid rgba(0,0,0,0.06)',
+        }}
+      >
+        <p className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+          <span style={{
+            display: 'inline-block',
+            width: 6, height: 6,
+            borderRadius: '50%',
+            backgroundColor: '#00A651',
+            flexShrink: 0
+          }} />
+          {indInfo.label}
         </p>
-        {[
-          { color: '#059669', label: '90–100 Excelente' },
-          { color: '#10B981', label: '75–89 Bueno' },
-          { color: '#F59E0B', label: '50–74 Atención' },
-          { color: '#F97316', label: '30–49 Riesgo' },
-          { color: '#EF4444', label: '0–29 Crítico' },
-          { color: '#E5E7EB', label: 'Sin datos' },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
-            <span className="text-gray-600">{label}</span>
+        {LEYENDA_RANGOS.map(({ color, label, rango }) => (
+          <div key={label} className="flex items-center justify-between gap-3 py-0.5">
+            <div className="flex items-center gap-1.5">
+              <div style={{
+                width: 10, height: 10,
+                borderRadius: 3,
+                backgroundColor: color,
+                flexShrink: 0,
+              }} />
+              <span className="text-xs text-gray-600">{label}</span>
+            </div>
+            <span className="text-xs text-gray-400 font-mono">{rango}</span>
           </div>
         ))}
-      </div>
+
+        {/* Barrio activo en la leyenda */}
+        {barrioActivo && (
+          <div className="mt-2 pt-2 border-t border-gray-100">
+            <p className="text-xs text-gray-500 truncate">
+              📍 <span className="font-medium text-gray-700">{barrioActivo.nombre}</span>
+            </p>
+          </div>
+        )}
+      </motion.div>
     </motion.div>
   )
 }

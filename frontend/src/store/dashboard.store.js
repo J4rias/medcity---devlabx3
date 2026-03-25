@@ -1,4 +1,4 @@
-"""
+/*
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                    Dashboard Store — Estado Global (Zustand)               ║
 ║                                                                            ║
@@ -13,7 +13,7 @@
 ║                                                                            ║
 ║ PATRÓN: Cada estado + su setter (action) están juntos                    ║
 ╚════════════════════════════════════════════════════════════════════════════╝
-"""
+*/
 
 import { create } from 'zustand'
 
